@@ -4,7 +4,7 @@ import {
   Server, Globe, HardDrive, Cpu, Terminal, FileText, 
   Copy, Check, Save, Info, CheckCircle2, Link, 
   Unlink, Activity, Wifi, ShieldCheck, AlertCircle,
-  Wrench, ShieldAlert, Zap, Box
+  Wrench, ShieldAlert, Zap, Box, Package, ChevronRight
 } from 'lucide-react';
 
 interface SettingsProps {
@@ -13,10 +13,11 @@ interface SettingsProps {
 }
 
 const SettingsView: React.FC<SettingsProps> = ({ serverName, onUpdateServerName }) => {
+  const [distro, setDistro] = useState<'rpi' | 'ubuntu'>('ubuntu');
   const [localServerInfo, setLocalServerInfo] = useState({
     name: serverName,
     ip: '192.168.1.45',
-    os: 'Raspberry Pi OS (64-bit)',
+    os: 'Ubuntu 24.04 LTS (Noble)',
     storage: '15 TB',
     sshPort: '22',
     apiUrl: 'http://localhost:8080/api/v1'
@@ -27,58 +28,60 @@ const SettingsView: React.FC<SettingsProps> = ({ serverName, onUpdateServerName 
   const [isAgentConnected, setIsAgentConnected] = useState(false);
 
   const readmeContent = useMemo(() => {
-    return `# 🍓 GUIDE D'INSTALLATION SPÉCIAL RASPBERRY PI 5
+    if (distro === 'ubuntu') {
+      return `# 🐧 GUIDE SPÉCIAL UBUNTU 24.04 (NOBLE NUMBAT)
 
-Le Raspberry Pi 5 nécessite l'agent en version **ARM64 (AArch64)** pour exploiter pleinement son processeur.
-
-## 🚀 1. PRÉPARATION DU PI 5
-- **OS Recommandé** : Raspberry Pi OS Lite (64-bit) Bookworm.
-- **Alimentation** : Utilisez l'alim officielle 27W (5V/5A) pour éviter les erreurs de disques (Under-voltage).
-
----
-
-## 📥 2. INSTALLATION DE L'AGENT (ARM64)
-
-Exécutez ces commandes dans votre terminal :
+## 📦 1. DÉPENDANCES UBUNTU
+Ubuntu 24.04 nécessite des paquets précis pour le montage et le partage :
 
 \`\`\`bash
-# 1. Télécharger l'agent optimisé pour Pi 5
-sudo curl -L https://get.andorya.io/arm64-agent -o /usr/local/bin/andorya-agent
-
-# 2. Correction de l'erreur 203/EXEC (Permissions)
-sudo chmod +x /usr/local/bin/andorya-agent
-
-# 3. Vérification de l'architecture
-# Doit afficher: ELF 64-bit LSB pie executable, ARM aarch64
-file /usr/local/bin/andorya-agent
+sudo apt update
+sudo apt install -y samba cifs-utils nfs-kernel-server smartmontools mdadm avahi-daemon apparmor-utils
 \`\`\`
 
 ---
 
-## ⚙️ 3. CONFIGURATION DU SERVICE
+## 📥 2. INSTALLATION DE L'AGENT
+Sur Ubuntu, assurez-vous de bien être en **root** pour les permissions :
+
+\`\`\`bash
+# Téléchargement ARM64 (Pi 5)
+sudo curl -L https://get.andorya.io/arm64-agent -o /usr/local/bin/andorya-agent
+
+# Permissions CRUCIALES
+sudo chmod 755 /usr/local/bin/andorya-agent
+sudo chown root:root /usr/local/bin/andorya-agent
+\`\`\`
+
+---
+
+## ⚙️ 3. SERVICE SYSTEMD (UBUNTU READY)
 \`\`\`bash
 sudo nano /etc/systemd/system/andorya-nas.service
 \`\`\`
 
-*Copiez ce bloc exact :*
+*Copiez ce bloc (optimisé pour Ubuntu) :*
 \`\`\`ini
 [Unit]
-Description=AndoryaNas Agent for Pi 5
-After=network.target
+Description=AndoryaNas Agent for Ubuntu 24.04
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/local/bin/andorya-agent --port 8080 --auth-key PI5_POWER
+Group=root
+ExecStart=/usr/local/bin/andorya-agent --port 8080 --auth-key UBUNTU_POWER
 Restart=always
 RestartSec=5
+# Ubuntu 24.04 security
+NoNewPrivileges=no
 
 [Install]
 WantedBy=multi-user.target
 \`\`\`
 
 \`\`\`bash
-# Activer au démarrage
 sudo systemctl daemon-reload
 sudo systemctl enable andorya-nas
 sudo systemctl start andorya-nas
@@ -86,17 +89,38 @@ sudo systemctl start andorya-nas
 
 ---
 
-## 💎 4. CONSEILS POUR PI 5 (STOCKAGE)
-- **NVMe via PCIe** : Si vous avez un SSD NVMe, l'agent le détectera automatiquement dans l'onglet "Storage Manager".
-- **USB 3.0** : Branchez vos gros disques sur les ports bleus.
-- **Boot PCIe** : Pour plus de vitesse, installez l'OS directement sur le NVMe.
+## 🛠️ 4. RÉGLAGES PI 5 SUR UBUNTU
+Le fichier de config se trouve ici :
+\`\`\`bash
+sudo nano /boot/firmware/config.txt
+# Ajoutez pour le NVMe :
+dtparam=pciex1_gen=3
+\`\`\`
+`;
+    }
+
+    return `# 🍓 GUIDE RASPBERRY PI OS (DEBIAN)
+
+## 📦 1. DÉPENDANCES
+\`\`\`bash
+sudo apt update
+sudo apt install -y samba cifs-utils nfs-kernel-server smartmontools mdadm avahi-daemon
+\`\`\`
 
 ---
 
-## 🔗 5. CONNEXION À L'INTERFACE
-Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
+## 📥 2. INSTALLATION
+\`\`\`bash
+sudo curl -L https://get.andorya.io/arm64-agent -o /usr/local/bin/andorya-agent
+sudo chmod +x /usr/local/bin/andorya-agent
+\`\`\`
+
+---
+
+## 🔗 3. LIAISON
+Adresse API : \`http://${localServerInfo.ip}:8080/api/v1\`
 `;
-  }, [localServerInfo]);
+  }, [distro, localServerInfo]);
 
   const copyReadme = () => {
     navigator.clipboard.writeText(readmeContent);
@@ -111,7 +135,7 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10 text-zinc-100">
       {showSuccess && (
         <div className="fixed top-24 right-8 z-[200] animate-in slide-in-from-right-4 duration-300">
           <div className="flex items-center gap-3 px-6 py-4 bg-emerald-600 text-white rounded-2xl shadow-2xl shadow-emerald-900/40 border border-emerald-500">
@@ -120,6 +144,26 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
           </div>
         </div>
       )}
+
+      {/* OS Selector Tabs */}
+      <div className="flex items-center gap-4 bg-zinc-900/50 p-2 rounded-3xl border border-zinc-800 w-fit mx-auto lg:mx-0">
+        <button 
+          onClick={() => setDistro('ubuntu')}
+          className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all ${
+            distro === 'ubuntu' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <Box size={18} /> Ubuntu 24.04
+        </button>
+        <button 
+          onClick={() => setDistro('rpi')}
+          className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all ${
+            distro === 'rpi' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <Cpu size={18} /> Raspberry Pi OS
+        </button>
+      </div>
 
       {/* Connection Status Banner */}
       <div className={`p-6 rounded-[2rem] border flex items-center justify-between transition-all ${
@@ -133,13 +177,17 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
           </div>
           <div>
             <h3 className="font-bold text-lg flex items-center gap-2">
-              {isAgentConnected ? 'Connecté au Pi 5' : 'Mode Démonstration'}
-              <span className="px-2 py-0.5 bg-rose-500/20 text-rose-400 text-[10px] rounded-full border border-rose-500/20">AArch64</span>
+              {isAgentConnected ? 'Système Relié' : 'Mode Déconnecté'}
+              <span className={`px-2 py-0.5 text-[10px] rounded-full border ${
+                distro === 'ubuntu' ? 'bg-orange-500/20 text-orange-400 border-orange-500/20' : 'bg-rose-500/20 text-rose-400 border-rose-500/20'
+              }`}>
+                {distro === 'ubuntu' ? 'Ubuntu Noble' : 'Debian Bookworm'}
+              </span>
             </h3>
             <p className="text-sm opacity-80">
               {isAgentConnected 
-                ? 'L\'interface reçoit les données du matériel Raspberry Pi 5.' 
-                : 'L\'interface n\'est pas encore reliée à votre Raspberry Pi 5.'}
+                ? 'L\'agent transmet les données matérielles en temps réel.' 
+                : 'Veuillez configurer l\'agent sur votre serveur Ubuntu 24.04.'}
             </p>
           </div>
         </div>
@@ -148,10 +196,10 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
           className={`px-6 py-2 rounded-xl font-bold text-xs border transition-all ${
             isAgentConnected 
               ? 'bg-emerald-500 text-white border-emerald-400' 
-              : 'bg-rose-500 text-white border-rose-400 shadow-lg shadow-rose-500/20'
+              : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
           }`}
         >
-          {isAgentConnected ? 'Passer en Démo' : 'Connecter au Pi 5'}
+          {isAgentConnected ? 'Désactiver Liaison' : 'Forcer la Connexion'}
         </button>
       </div>
 
@@ -163,8 +211,8 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
               <Server className="text-indigo-400" size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-bold">Identité du Serveur</h3>
-              <p className="text-xs text-zinc-500 font-medium">Paramètres réseau de votre Raspberry Pi.</p>
+              <h3 className="text-xl font-bold">Paramètres NAS</h3>
+              <p className="text-xs text-zinc-500 font-medium">Configuration réseau locale.</p>
             </div>
           </div>
 
@@ -177,26 +225,26 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
                   type="text" 
                   value={localServerInfo.name}
                   onChange={(e) => setLocalServerInfo({...localServerInfo, name: e.target.value})}
-                  className="w-full pl-12 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm font-bold"
+                  className="w-full pl-12 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm font-bold text-white"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">IP du Pi 5</label>
+              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">IP du Serveur</label>
               <div className="relative">
                 <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={16} />
                 <input 
                   type="text" 
                   value={localServerInfo.ip}
                   onChange={(e) => setLocalServerInfo({...localServerInfo, ip: e.target.value})}
-                  className="w-full pl-12 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm font-mono"
+                  className="w-full pl-12 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm font-mono text-white"
                 />
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Point d'accès API (Backend)</label>
+            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Endpoint API</label>
             <div className="relative">
               <Link className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={16} />
               <input 
@@ -204,34 +252,6 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
                 value={localServerInfo.apiUrl}
                 onChange={(e) => setLocalServerInfo({...localServerInfo, apiUrl: e.target.value})}
                 className="w-full pl-12 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-amber-500/50 text-xs font-mono text-amber-500"
-                placeholder="http://votre-pi-ip:8080/api"
-              />
-            </div>
-            <p className="text-[10px] text-zinc-600 mt-1 italic flex items-center gap-1">
-              <Zap size={10} className="text-amber-500" /> Assurez-vous que l'agent tourne sur le Pi 5.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Système d'exploitation</label>
-              <div className="relative">
-                <Box className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={16} />
-                <input 
-                  type="text" 
-                  value={localServerInfo.os}
-                  onChange={(e) => setLocalServerInfo({...localServerInfo, os: e.target.value})}
-                  className="w-full pl-12 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Port SSH</label>
-              <input 
-                type="text" 
-                value={localServerInfo.sshPort}
-                onChange={(e) => setLocalServerInfo({...localServerInfo, sshPort: e.target.value})}
-                className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm text-center"
               />
             </div>
           </div>
@@ -240,7 +260,7 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
             onClick={handleUpdate}
             className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
           >
-            <Save size={18} /> Enregistrer la config Pi 5
+            <Save size={18} /> Sauvegarder
           </button>
         </div>
 
@@ -248,12 +268,12 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
         <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 flex flex-col h-full shadow-xl">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-rose-500/10 rounded-2xl">
-                <Cpu className="text-rose-500" size={24} />
+              <div className={`p-3 rounded-2xl ${distro === 'ubuntu' ? 'bg-orange-500/10' : 'bg-rose-500/10'}`}>
+                <Package className={distro === 'ubuntu' ? 'text-orange-500' : 'text-rose-500'} size={24} />
               </div>
               <div>
-                <h3 className="text-xl font-bold">Guide Raspberry Pi 5</h3>
-                <p className="text-xs text-zinc-500 font-medium">Instructions optimisées pour AArch64.</p>
+                <h3 className="text-xl font-bold">Guide {distro === 'ubuntu' ? 'Ubuntu' : 'RPi'}</h3>
+                <p className="text-xs text-zinc-500 font-medium">Instructions certifiées pour Noble Numbat.</p>
               </div>
             </div>
             <button 
@@ -263,7 +283,7 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
               }`}
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? 'Copié' : 'Copier Guide'}
+              {copied ? 'Copié' : 'Copier'}
             </button>
           </div>
 
@@ -273,10 +293,10 @@ Entrez l'adresse de votre Pi : \`http://${localServerInfo.ip}:8080/api/v1\`
             </pre>
           </div>
           
-          <div className="mt-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex items-start gap-3">
-            <Zap className="text-amber-400 mt-0.5" size={18} />
+          <div className="mt-6 p-4 bg-orange-500/5 border border-orange-500/20 rounded-2xl flex items-start gap-3">
+            <ShieldAlert className="text-orange-400 mt-0.5" size={18} />
             <p className="text-[10px] text-zinc-400 leading-relaxed">
-              <strong>Info Pi 5 :</strong> Pour utiliser des disques NVMe, n'oubliez pas d'activer le mode PCIe Gen 3 dans votre \`config.txt\` pour des débits allant jusqu'à 800 MB/s !
+              <strong>Attention Ubuntu :</strong> Si l'agent refuse de démarrer, vérifiez les logs avec \`journalctl -u andorya-nas\`. Il se peut qu'AppArmor bloque l'accès à certains dossiers de montage.
             </p>
           </div>
         </div>
