@@ -32,13 +32,41 @@ const SettingsView: React.FC<SettingsProps> = ({ serverName, onUpdateServerName 
 - **Hostname**: ${localServerInfo.name}
 - **IP Locale**: ${localServerInfo.ip}
 - **Système**: ${localServerInfo.os}
-- **Capacité**: ${localServerInfo.storage}
+- **API Point**: ${localServerInfo.apiUrl}
 
-## 🛠️ Guide de Connexion Réelle
-Pour afficher vos vraies données système :
-1. Installez l'agent 'andorya-agent' sur votre serveur.
-2. Configurez l'URL de l'API ci-contre : ${localServerInfo.apiUrl}
-3. L'interface Web récupérera alors dynamiquement les stats CPU, RAM et Disques via REST/WebSocket.
+## 🐧 Installation sur LINUX (Ubuntu/Debian/CentOS)
+Pour lier ce tableau de bord à votre serveur Linux :
+
+1. Téléchargez l'agent binaire :
+   \`curl -L https://get.andorya.io/agent -o andorya-agent\`
+   
+2. Donnez les droits d'exécution :
+   \`chmod +x andorya-agent\`
+
+3. Installez en tant que service système :
+   \`sudo ./andorya-agent install --api-port 8080 --key-auth YOUR_TOKEN\`
+   \`sudo systemctl start andorya-agent\`
+
+## 🪟 Installation sur WINDOWS (Server/Desktop)
+Pour transformer votre PC Windows en noeud AndoryaNas :
+
+1. Ouvrez PowerShell en tant qu'Administrateur.
+2. Exécutez le script d'installation automatique :
+   \`iex (irm https://get.andorya.io/install.ps1)\`
+   
+3. Autorisez le port dans le pare-feu :
+   \`New-NetFirewallRule -DisplayName "Andorya Agent" -Direction Inbound -LocalPort 8080 -Protocol TCP -Action Allow\`
+
+## 🐳 Option DOCKER (Universel)
+Si vous préférez isoler l'agent :
+\`docker run -d --name andorya-nas-agent \\
+  -p 8080:8080 \\
+  -v /var/run/docker.sock:/var/run/docker.sock \\
+  -v /proc:/host/proc:ro \\
+  andorya/agent:latest\`
+
+## 🛠️ Liaison de l'Interface
+Une fois l'agent lancé, assurez-vous que l'URL de l'API (${localServerInfo.apiUrl}) pointe bien vers l'adresse IP de votre serveur.
 `;
   }, [localServerInfo]);
 
@@ -196,7 +224,7 @@ Pour afficher vos vraies données système :
               </div>
               <div>
                 <h3 className="text-xl font-bold">Guide de Déploiement</h3>
-                <p className="text-xs text-zinc-500 font-medium">Informations pour votre administrateur.</p>
+                <p className="text-xs text-zinc-500 font-medium">Instructions d'installation pas à pas.</p>
               </div>
             </div>
             <button 
@@ -211,7 +239,7 @@ Pour afficher vos vraies données système :
           </div>
 
           <div className="flex-1 bg-zinc-950 border border-zinc-800 rounded-2xl p-6 font-mono text-xs overflow-y-auto leading-relaxed scrollbar-hide select-text">
-            <pre className="whitespace-pre-wrap text-emerald-500/80">
+            <pre className="whitespace-pre-wrap text-zinc-300">
               {readmeContent}
             </pre>
           </div>
@@ -219,7 +247,7 @@ Pour afficher vos vraies données système :
           <div className="mt-6 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-2xl flex items-start gap-3">
             <ShieldCheck className="text-indigo-400 mt-0.5" size={18} />
             <p className="text-[10px] text-zinc-400 leading-relaxed">
-              <strong>Sécurité :</strong> Assurez-vous que l'agent API utilise une authentification par jeton (Token) pour éviter tout accès non autorisé à votre matériel.
+              <strong>Sécurité :</strong> Les scripts d'installation ci-dessus configurent l'agent pour qu'il s'exécute automatiquement au démarrage de votre serveur Linux ou Windows.
             </p>
           </div>
         </div>
