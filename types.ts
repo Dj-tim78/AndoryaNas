@@ -18,6 +18,7 @@ export interface Group {
 export interface User {
   id: string;
   username: string;
+  password?: string; // Ajouté pour l'auth
   role: 'Admin' | 'User' | 'Guest';
   status: 'Active' | 'Disabled';
   lastLogin: string;

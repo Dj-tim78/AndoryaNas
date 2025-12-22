@@ -29,8 +29,8 @@ const App: React.FC = () => {
   // Global Shared States
   const [serverName, setServerName] = useState('AndoryaNas-Home');
   const [users, setUsers] = useState<User[]>([
-    { id: '1', username: 'admin', role: 'Admin', status: 'Active', lastLogin: 'Just now', groups: ['admin'] },
-    { id: '2', username: 'media_box', role: 'User', status: 'Active', lastLogin: '2h ago', groups: ['multimedia'] },
+    { id: '1', username: 'admin', password: 'admin', role: 'Admin', status: 'Active', lastLogin: 'Just now', groups: ['admin'] },
+    { id: '2', username: 'media_box', password: 'password', role: 'User', status: 'Active', lastLogin: '2h ago', groups: ['multimedia'] },
   ]);
   
   const [shares, setShares] = useState<Share[]>([
@@ -55,7 +55,7 @@ const App: React.FC = () => {
   };
 
   if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={handleLogin} users={users} />;
   }
 
   const renderContent = () => {

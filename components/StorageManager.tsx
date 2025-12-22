@@ -5,30 +5,40 @@ import {
   HardDrive, AlertCircle, Thermometer, Activity, Zap, 
   ArrowDownCircle, ArrowUpCircle, XCircle, Info, 
   PlusCircle, Layers, X, Shield, Cpu, Database, 
-  RefreshCw, Box, Workflow, CheckCircle2, Trash2, ShieldAlert, Edit3, LogOut
+  RefreshCw, Box, Workflow, CheckCircle2, Trash2, ShieldAlert, Edit3, LogOut, TrendingUp
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer,
   LineChart, Line
 } from 'recharts';
 
-// Data Generation Logic
-const generateHighResData = () => {
+// Logic to generate high resolution data for simulation
+const generateHighResData = (count: number) => {
   const points = [];
   const now = new Date();
-  for (let i = 120; i > 0; i--) {
-    const time = new Date(now.getTime() - i * 60000);
-    const baseRead = 200 + Math.sin(i / 10) * 50 + Math.random() * 30;
-    const baseWrite = 150 + Math.cos(i / 15) * 40 + Math.random() * 20;
+  for (let i = count; i > 0; i--) {
+    const time = new Date(now.getTime() - i * 5000); // 5s intervals
+    const baseRead = 200 + Math.sin(i / 8) * 80 + Math.random() * 40;
+    const baseWrite = 120 + Math.cos(i / 12) * 60 + Math.random() * 30;
     points.push({
       timestamp: time.getTime(),
-      timeStr: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timeStr: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       read: Math.floor(baseRead),
       write: Math.floor(baseWrite),
-      iops: Math.floor(baseRead * 3 + Math.random() * 300)
+      iops: Math.floor(baseRead * 2.5 + Math.random() * 200)
     });
   }
   return points;
+};
+
+/**
+ * Optimizes chart performance by downsampling data points.
+ * Simple Nth-point sampling to keep Recharts performant with large buffers.
+ */
+const downsampleData = (data: any[], targetPoints: number) => {
+  if (data.length <= targetPoints) return data;
+  const factor = Math.floor(data.length / targetPoints);
+  return data.filter((_, i) => i % factor === 0);
 };
 
 const INITIAL_DISKS: StorageDisk[] = [
@@ -58,6 +68,35 @@ const StorageManager: React.FC = () => {
   const [initStep, setInitStep] = useState<'config' | 'progress' | 'success'>('config');
   const [progress, setProgress] = useState(0);
 
+  // Performance Monitoring State
+  const [perfData, setPerfData] = useState<any[]>(() => generateHighResData(200));
+
+  // Simulation of live performance data
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPerfData(prev => {
+        const next = [...prev];
+        if (next.length > 500) next.shift(); // Hard limit buffer
+        const last = next[next.length - 1];
+        const time = new Date(last.timestamp + 5000);
+        const baseRead = 200 + Math.sin(next.length / 8) * 80 + Math.random() * 40;
+        const baseWrite = 120 + Math.cos(next.length / 12) * 60 + Math.random() * 30;
+        next.push({
+          timestamp: time.getTime(),
+          timeStr: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          read: Math.floor(baseRead),
+          write: Math.floor(baseWrite),
+          iops: Math.floor(baseRead * 2.5 + Math.random() * 200)
+        });
+        return next;
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Optimized data for charts (downsampled to 60 points for 5 mins view or similar)
+  const displayData = useMemo(() => downsampleData(perfData, 60), [perfData]);
+
   // Form State
   const [configName, setConfigName] = useState('');
   const [raidLevel, setRaidLevel] = useState('RAID 0');
@@ -69,8 +108,6 @@ const StorageManager: React.FC = () => {
   const handleScanHardware = () => {
     setIsScanning(true);
     setTimeout(() => {
-      // Simulation: Re-découverte des disques retirés si on le souhaite, 
-      // ou simple rafraîchissement
       setIsScanning(false);
     }, 2000);
   };
@@ -140,7 +177,6 @@ const StorageManager: React.FC = () => {
 
   const handleEjectDisk = () => {
     if (!diskToRemove) return;
-    // Simulation du retrait physique
     setDisks(prev => prev.filter(d => d.id !== diskToRemove.id));
     setDiskToRemove(null);
   };
@@ -218,7 +254,87 @@ const StorageManager: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. Unconfigured Hardware */}
+      {/* 2. Volume Performance - NEW SECTION */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-cyan-500/10 rounded-xl border border-cyan-500/20">
+              <TrendingUp className="text-cyan-400" size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-zinc-100">Performance du Volume</h3>
+              <p className="text-xs text-zinc-500">Lecture/Écriture et IOPS en temps réel (sous-échantillonné pour performance).</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 p-8 bg-zinc-900 border border-zinc-800 rounded-[2.5rem] shadow-xl">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex gap-4">
+                 <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Lecture (MB/s)</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Écriture (MB/s)</span>
+                 </div>
+              </div>
+            </div>
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={displayData}>
+                  <defs>
+                    <linearGradient id="colorRead" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorWrite" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+                  <XAxis dataKey="timeStr" hide />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#71717a', fontSize: 10}} unit="MB/s" />
+                  <ChartTooltip 
+                    contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '12px', fontSize: '10px' }}
+                    itemStyle={{ padding: '2px 0' }}
+                  />
+                  <Area type="monotone" dataKey="read" stroke="#6366f1" fillOpacity={1} fill="url(#colorRead)" strokeWidth={2} isAnimationActive={false} />
+                  <Area type="monotone" dataKey="write" stroke="#f43f5e" fillOpacity={1} fill="url(#colorWrite)" strokeWidth={2} isAnimationActive={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-[2.5rem] shadow-xl">
+            <div className="flex items-center justify-between mb-8">
+              <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Opérations IOPS</h4>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-cyan-500/10 rounded-full border border-cyan-500/20">
+                 <Activity size={10} className="text-cyan-400" />
+                 <span className="text-[10px] font-bold text-cyan-400">Live</span>
+              </div>
+            </div>
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={displayData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+                  <XAxis dataKey="timeStr" hide />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#71717a', fontSize: 10}} />
+                  <ChartTooltip 
+                    contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '12px', fontSize: '10px' }}
+                  />
+                  <Line type="step" dataKey="iops" stroke="#06b6d4" strokeWidth={2} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Unconfigured Hardware */}
       <section className="space-y-4">
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">

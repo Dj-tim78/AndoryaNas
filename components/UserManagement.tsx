@@ -22,6 +22,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
   
   // Form States
   const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'Admin' | 'User' | 'Guest'>('User');
   const [newGroupName, setNewGroupName] = useState('');
 
@@ -41,6 +42,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
     const newUser: User = {
       id: Math.random().toString(36).substr(2, 9),
       username: newUsername,
+      password: newPassword || 'password', // Valeur par défaut si vide
       role: newRole,
       status: 'Active',
       lastLogin: 'Never',
@@ -49,6 +51,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
     
     onUpdateUsers([...users, newUser]);
     setNewUsername('');
+    setNewPassword('');
     setShowAddModal(false);
   };
 
@@ -93,7 +96,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
   const handleDeleteGroup = (id: string) => {
     if (confirm('Supprimer ce groupe ? Cela ne supprimera pas les utilisateurs associés mais retirera leur appartenance.')) {
       onUpdateGroups(groups.filter(g => g.id !== id));
-      // Optionnel: Nettoyer les groupes des utilisateurs
       onUpdateUsers(users.map(u => ({
           ...u,
           groups: u.groups.filter(gn => gn !== groups.find(g => g.id === id)?.name)
@@ -349,7 +351,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
 
       {showAddModal && activeTab === 'users' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200 text-zinc-100">
             <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
                     <div className="p-4 bg-cyan-500/10 rounded-2xl border border-cyan-500/20">
@@ -372,7 +374,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
                   type="text" 
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
-                  className="w-full px-6 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm font-bold"
+                  className="w-full px-6 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm font-bold text-white"
                   placeholder="ex: j_dupont"
                   required
                 />
@@ -384,7 +386,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
                   <select 
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value as any)}
-                    className="w-full px-6 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm"
+                    className="w-full px-6 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500/50 text-sm text-white"
                   >
                     <option value="User">Utilisateur Standard</option>
                     <option value="Admin">Administrateur</option>
@@ -405,8 +407,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
                 <div className="relative">
                   <input 
                     type={showPassword ? 'text' : 'password'} 
-                    className="w-full px-6 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500/50 pr-14 text-sm font-mono"
-                    placeholder="Auto-généré par défaut"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-6 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl outline-none focus:ring-2 focus:ring-cyan-500/50 pr-14 text-sm font-mono text-white"
+                    placeholder="Saisissez un mot de passe"
                     required
                   />
                   <button 
@@ -439,7 +443,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
   );
 };
 
-// Fix for property 'className' missing error by making it optional with a default value
 const Plus = ({ size, className = '' }: { size: number, className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <line x1="12" y1="5" x2="12" y2="19"></line>
