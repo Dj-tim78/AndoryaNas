@@ -1,0 +1,8 @@
+{
+  "name": "AndoryaNas Management Suite",
+  "description": "A high-end NAS management interface featuring real-time monitoring, shared folder management, and a step-by-step network drive mapping wizard for Windows, macOS, and Linux.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
