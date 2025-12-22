@@ -36,6 +36,17 @@ export interface Share {
   sizeTotal: number;
 }
 
+export interface StoragePool {
+  id: string;
+  name: string;
+  raidLevel: string;
+  fileSystem: 'Btrfs' | 'EXT4';
+  status: 'Healthy' | 'Degraded' | 'Rebuilding';
+  capacityUsed: number;
+  capacityTotal: number;
+  diskIds: string[];
+}
+
 export interface StorageDisk {
   id: string;
   model: string;
@@ -43,6 +54,8 @@ export interface StorageDisk {
   firmwareVersion: string;
   type: 'SSD' | 'HDD' | 'NVMe';
   capacity: string;
-  health: 'Healthy' | 'Warning' | 'Critical';
+  health: 'Healthy' | 'Warning' | 'Critical' | 'Uninitialized';
   temperature: number;
+  status: 'In Pool' | 'Available';
+  slot: number;
 }

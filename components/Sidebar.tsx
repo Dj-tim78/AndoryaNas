@@ -17,9 +17,10 @@ interface SidebarProps {
   activeView: View;
   setActiveView: (view: View) => void;
   onLogout: () => void;
+  serverName: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout, serverName }) => {
   const menuItems = [
     { id: View.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-400' },
     { id: View.STORAGE, label: 'Storage Manager', icon: Database, color: 'text-rose-400' },
@@ -36,8 +37,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout }
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
           <HardDrive className="text-white" size={24} />
         </div>
-        <span className="text-xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-zinc-100 to-zinc-400">
-          AndoryaNas
+        <span className="text-lg font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-zinc-100 to-zinc-400 truncate">
+          {serverName}
         </span>
       </div>
 
