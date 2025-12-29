@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, User, Group, Share } from './types';
+import { api } from './api';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import NetworkShares from './components/NetworkShares';
@@ -18,31 +19,49 @@ import {
   Settings as SettingsIcon, 
   Bot,
   Users,
-  LogOut
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>(View.DASHBOARD);
+  const [isLive, setIsLive] = useState(false);
   
-  // Global Shared States
   const [serverName, setServerName] = useState('AndoryaNas-Home');
   const [users, setUsers] = useState<User[]>([
     { id: '1', username: 'admin', password: 'admin', role: 'Admin', status: 'Active', lastLogin: 'Just now', groups: ['admin'] },
-    { id: '2', username: 'media_box', password: 'password', role: 'User', status: 'Active', lastLogin: '2h ago', groups: ['multimedia'] },
   ]);
   
   const [shares, setShares] = useState<Share[]>([
     { id: '1', name: 'Media', path: '/volume1/media', protocol: 'SMB', status: 'Active', isPrivate: false, authorizedUsers: [], sizeUsed: 8400, sizeTotal: 10000 },
-    { id: '2', name: 'Backups', path: '/volume1/backups', protocol: 'SMB', status: 'Locked', isPrivate: true, authorizedUsers: ['admin'], sizeUsed: 2800, sizeTotal: 5000 },
-    { id: '3', name: 'Dev', path: '/volume1/projects', protocol: 'NFS', status: 'Active', isPrivate: true, authorizedUsers: ['admin'], sizeUsed: 450, sizeTotal: 1000 },
   ]);
 
   const [groups, setGroups] = useState<Group[]>([
     { id: '1', name: 'admin', memberCount: 1 },
-    { id: '2', name: 'multimedia', memberCount: 1 },
   ]);
+
+  // Vérification de la connexion au serveur réel au démarrage
+  useEffect(() => {
+    const initApp = async () => {
+      const connected = await api.checkConnection();
+      setIsLive(connected);
+      if (connected) {
+        try {
+          const [realUsers, realShares] = await Promise.all([
+            api.getUsers(),
+            api.getShares()
+          ]);
+          setUsers(realUsers);
+          setShares(realShares);
+        } catch (e) {
+          console.warn("Erreur lors de la récupération des données réelles, passage en mode démo.");
+        }
+      }
+    };
+    initApp();
+  }, []);
 
   const handleLogin = (user: string) => {
     setCurrentUser(user);
@@ -58,27 +77,6 @@ const App: React.FC = () => {
     return <Login onLogin={handleLogin} users={users} />;
   }
 
-  const renderContent = () => {
-    switch (activeView) {
-      case View.DASHBOARD: return <Dashboard />;
-      case View.SHARES: 
-        return <NetworkShares shares={shares} onUpdateShares={setShares} />;
-      case View.USERS: 
-        return <UserManagement 
-          users={users} 
-          groups={groups} 
-          onUpdateUsers={setUsers} 
-          onUpdateGroups={setGroups} 
-        />;
-      case View.DRIVE_MAPPING: return <MappingWizard />;
-      case View.STORAGE: return <StorageManager />;
-      case View.SETTINGS: 
-        return <SettingsView serverName={serverName} onUpdateServerName={setServerName} />;
-      case View.GEMINI_HELP: return <GeminiAssistant />;
-      default: return null;
-    }
-  };
-
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500/30">
       <Sidebar 
@@ -90,29 +88,34 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-y-auto bg-zinc-900/50 backdrop-blur-sm border-l border-zinc-800">
         <header className="sticky top-0 z-10 flex items-center justify-between px-8 py-4 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
           <div className="flex items-center gap-3">
-            {activeView === View.DASHBOARD && <LayoutDashboard className="text-indigo-400" size={20} />}
-            {activeView === View.SHARES && <Network className="text-emerald-400" size={20} />}
-            {activeView === View.USERS && <Users className="text-cyan-400" size={20} />}
-            {activeView === View.DRIVE_MAPPING && <MonitorPlay className="text-amber-400" size={20} />}
-            {activeView === View.STORAGE && <Database className="text-rose-400" size={20} />}
-            {activeView === View.SETTINGS && <SettingsIcon className="text-zinc-400" size={20} />}
-            {activeView === View.GEMINI_HELP && <Bot className="text-purple-400" size={20} />}
             <h1 className="text-lg font-semibold tracking-tight">
               {activeView.replace('_', ' ')}
             </h1>
+            {isLive ? (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[10px] font-black text-emerald-500 uppercase">
+                <Wifi size={10} /> Live Server
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[10px] font-black text-amber-500 uppercase">
+                <WifiOff size={10} /> Simulation Mode
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded-full border border-zinc-700">
               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
               <span className="text-xs font-bold text-zinc-300">{serverName} • {currentUser}</span>
             </div>
-            <button onClick={() => setActiveView(View.SETTINGS)} className={`p-2 rounded-lg transition-all ${activeView === View.SETTINGS ? 'bg-zinc-800 text-white' : 'hover:bg-zinc-800 text-zinc-400'}`}>
-              <SettingsIcon size={18} />
-            </button>
           </div>
         </header>
         <div className="p-8 max-w-7xl mx-auto">
-          {renderContent()}
+          {activeView === View.DASHBOARD && <Dashboard isLive={isLive} />}
+          {activeView === View.SHARES && <NetworkShares shares={shares} onUpdateShares={setShares} />}
+          {activeView === View.USERS && <UserManagement users={users} groups={groups} onUpdateUsers={setUsers} onUpdateGroups={setGroups} />}
+          {activeView === View.DRIVE_MAPPING && <MappingWizard />}
+          {activeView === View.STORAGE && <StorageManager isLive={isLive} />}
+          {activeView === View.SETTINGS && <SettingsView serverName={serverName} onUpdateServerName={setServerName} />}
+          {activeView === View.GEMINI_HELP && <GeminiAssistant />}
         </div>
       </main>
     </div>

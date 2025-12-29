@@ -55,7 +55,12 @@ const INITIAL_POOLS: StoragePool[] = [
   { id: 'pool-2', name: 'Cache_NVMe', raidLevel: 'Basic', fileSystem: 'EXT4', status: 'Healthy', capacityUsed: 1200, capacityTotal: 2000, diskIds: ['2'] },
 ];
 
-const StorageManager: React.FC = () => {
+// Added StorageManagerProps to accept isLive from App.tsx
+interface StorageManagerProps {
+  isLive?: boolean;
+}
+
+const StorageManager: React.FC<StorageManagerProps> = ({ isLive }) => {
   const [disks, setDisks] = useState<StorageDisk[]>(INITIAL_DISKS);
   const [pools, setPools] = useState<StoragePool[]>(INITIAL_POOLS);
   const [isScanning, setIsScanning] = useState(false);

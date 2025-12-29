@@ -17,7 +17,12 @@ const storageData = [
 
 const COLORS = ['#6366f1', '#27272a'];
 
-const Dashboard: React.FC = () => {
+// Added DashboardProps to accept isLive from App.tsx
+interface DashboardProps {
+  isLive?: boolean;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ isLive }) => {
   // Simuler des données de réseau qui bougent
   const [throughputData, setThroughputData] = useState([
     { name: '00:00', upload: 45, download: 120 },

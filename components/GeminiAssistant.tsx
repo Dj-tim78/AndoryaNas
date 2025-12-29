@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -10,7 +10,7 @@ interface Message {
 
 const GeminiAssistant: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: "Hello! I'm your AndoryaNas assistant. I can help you set up shared folders, troubleshoot network drive letters, or optimize your storage pool. How can I help you today?" }
+    { role: 'assistant', content: "Bonjour ! Je suis l'assistant AndoryaNas. Je peux vous aider à configurer vos partages, dépanner vos lettres réseau ou optimiser vos disques. Comment puis-je vous aider ?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,33 +25,46 @@ const GeminiAssistant: React.FC = () => {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    // IMPORTANT: La clé doit être nommée API_KEY dans votre environnement
+    const apiKey = process.env.API_KEY;
+
+    if (!apiKey) {
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: "⚠️ Erreur : Aucune clé API détectée. Assurez-vous d'avoir renommé votre variable d'environnement en 'API_KEY' (et non 'GEMINI_API_KEY')." 
+      }]);
+      return;
+    }
+
     const userMessage = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userMessage,
         config: {
-          systemInstruction: `You are an expert IT and Network Storage engineer for AndoryaNas. 
-          The user is interacting with their NAS dashboard.
-          Provide clear, technical yet accessible advice about:
-          - Mapping network drive letters (using "net use" on Windows, or SMB on macOS).
-          - Setting up SMB/NFS protocols.
-          - Troubleshooting why a network drive might not connect (firewall, credentials, network isolation).
-          - Storage management and RAID configurations.
-          Keep responses concise and formatted with markdown.`,
+          systemInstruction: `Vous êtes un ingénieur expert en stockage réseau (NAS). 
+          L'utilisateur utilise l'interface AndoryaNas.
+          Conseillez sur :
+          - Les commandes "net use" (Windows) ou montage SMB (Mac/Linux).
+          - Les configurations RAID et le système de fichiers Btrfs.
+          - Le dépannage des accès réseau et pare-feu.
+          Répondez en Français, de manière concise.`,
         }
       });
 
-      const assistantMessage = response.text || "I'm sorry, I couldn't process that request.";
+      const assistantMessage = response.text || "Désolé, je n'ai pas pu générer de réponse.";
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
-    } catch (error) {
-      console.error('Error calling Gemini:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting to the brain center. Please check your network connection." }]);
+    } catch (error: any) {
+      console.error('Gemini Error:', error);
+      let errorMsg = "Une erreur est survenue lors de la connexion à l'IA.";
+      if (error.message?.includes('403')) errorMsg = "Clé API invalide ou non autorisée.";
+      
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg }]);
     } finally {
       setIsLoading(false);
     }
@@ -65,19 +78,13 @@ const GeminiAssistant: React.FC = () => {
             <Bot className="text-purple-400" size={24} />
           </div>
           <div>
-            <h3 className="font-bold text-zinc-100">AI Support Engineer</h3>
+            <h3 className="font-bold text-zinc-100">Ingénieur Support IA</h3>
             <p className="text-xs text-zinc-500 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Powered by Gemini
+              Propulsé par Gemini
             </p>
           </div>
         </div>
-        <button 
-          onClick={() => setMessages([messages[0]])}
-          className="text-xs font-semibold text-zinc-500 hover:text-zinc-300 transition-colors"
-        >
-          Reset Session
-        </button>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
@@ -94,9 +101,7 @@ const GeminiAssistant: React.FC = () => {
                   ? 'bg-indigo-600 text-white rounded-tr-none' 
                   : 'bg-zinc-800 text-zinc-300 rounded-tl-none border border-zinc-700'
               }`}>
-                {msg.content.split('\n').map((line, idx) => (
-                  <p key={idx} className={idx > 0 ? 'mt-2' : ''}>{line}</p>
-                ))}
+                {msg.content}
               </div>
             </div>
           </div>
@@ -109,7 +114,7 @@ const GeminiAssistant: React.FC = () => {
               </div>
               <div className="p-4 rounded-2xl bg-zinc-800 text-zinc-500 text-sm flex items-center gap-2">
                 <Loader2 size={16} className="animate-spin" />
-                Processing request...
+                Analyse de votre NAS...
               </div>
             </div>
           </div>
@@ -117,32 +122,28 @@ const GeminiAssistant: React.FC = () => {
       </div>
 
       <div className="p-6 bg-zinc-900 border-t border-zinc-800">
+        {!process.env.API_KEY && (
+          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3 text-xs text-rose-400">
+            <AlertCircle size={14} />
+            <span>Variable 'API_KEY' manquante dans l'environnement.</span>
+          </div>
+        )}
         <div className="relative group">
           <input 
             type="text" 
-            placeholder="Ask anything (e.g., 'How do I map a network drive on Windows 11?')"
+            placeholder="Posez une question sur votre serveur (ex: Comment monter un disque sur Windows ?)"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            className="w-full pl-6 pr-14 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all text-sm"
+            className="w-full pl-6 pr-14 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all text-sm"
           />
           <button 
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-xl text-white transition-all shadow-lg shadow-purple-600/20"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-purple-600 hover:bg-purple-500 disabled:bg-zinc-800 rounded-xl text-white transition-all shadow-lg"
           >
             <Send size={18} />
           </button>
-        </div>
-        <div className="mt-4 flex items-center justify-center gap-6">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-            <Sparkles size={12} className="text-purple-500" />
-            Instant Support
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-            <Sparkles size={12} className="text-purple-500" />
-            Configuration Guide
-          </div>
         </div>
       </div>
     </div>
