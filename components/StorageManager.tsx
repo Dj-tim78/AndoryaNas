@@ -4,126 +4,86 @@ import { StorageDisk, StoragePool } from '../types';
 import { api } from '../api';
 import { 
   HardDrive, Zap, Info, PlusCircle, Database, 
-  RefreshCw, Box, CheckCircle2, Trash2, Edit3, LogOut, TrendingUp
+  RefreshCw, Box, CheckCircle2, Trash2, Edit3, LogOut, TrendingUp,
+  AlertTriangle
 } from 'lucide-react';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer,
-  LineChart, Line
-} from 'recharts';
 
-const generateHighResData = (count: number) => {
-  const points = [];
-  const now = new Date();
-  for (let i = count; i > 0; i--) {
-    const time = new Date(now.getTime() - i * 5000);
-    const baseRead = 200 + Math.sin(i / 8) * 80 + Math.random() * 40;
-    const baseWrite = 120 + Math.cos(i / 12) * 60 + Math.random() * 30;
-    points.push({
-      timestamp: time.getTime(),
-      timeStr: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      read: Math.floor(baseRead),
-      write: Math.floor(baseWrite),
-      iops: Math.floor(baseRead * 2.5 + Math.random() * 200)
-    });
-  }
-  return points;
-};
-
-const downsampleData = (data: any[], targetPoints: number) => {
-  if (data.length <= targetPoints) return data;
-  const factor = Math.floor(data.length / targetPoints);
-  return data.filter((_, i) => i % factor === 0);
-};
+const INITIAL_DEMO_DISKS: StorageDisk[] = [
+  { id: 'demo-1', model: 'WD Gold 4TB Enterprise', serialNumber: 'WD-WXV1E80H7KJ4', firmwareVersion: '81.00A81', type: 'HDD', capacity: '4.0 TB', health: 'Healthy', temperature: 34, status: 'In Pool', slot: 1 },
+  { id: 'demo-2', model: 'Samsung 980 Pro 2TB', serialNumber: 'S69ENF0R812345X', firmwareVersion: '5B2QGXA7', type: 'NVMe', capacity: '2.0 TB', health: 'Healthy', temperature: 42, status: 'In Pool', slot: 2 },
+  { id: 'demo-3', model: 'Crucial MX500 1TB', serialNumber: 'CT1000MX500SSD1', firmwareVersion: 'M3CR046', type: 'SSD', capacity: '1.0 TB', health: 'Uninitialized', temperature: 28, status: 'Available', slot: 3 },
+];
 
 interface StorageManagerProps {
   isLive?: boolean;
 }
 
 const StorageManager: React.FC<StorageManagerProps> = ({ isLive }) => {
-  const [disks, setDisks] = useState<StorageDisk[]>([]);
+  // On initialise avec les disques de démo pour ne pas avoir un écran vide
+  const [disks, setDisks] = useState<StorageDisk[]>(INITIAL_DEMO_DISKS);
   const [pools, setPools] = useState<StoragePool[]>([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [configuringDisk, setConfiguringDisk] = useState<StorageDisk | null>(null);
-  const [poolToRename, setPoolToRename] = useState<StoragePool | null>(null);
-  const [poolToDelete, setPoolToDelete] = useState<StoragePool | null>(null);
-  const [diskToRemove, setDiskToRemove] = useState<StorageDisk | null>(null);
-  const [initStep, setInitStep] = useState<'config' | 'progress' | 'success'>('config');
-  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  // Performance simulation data
-  const [perfData, setPerfData] = useState<any[]>(() => generateHighResData(100));
-
-  // Charger les vrais disques si Live
-  useEffect(() => {
-    const loadDisks = async () => {
-      if (isLive) {
-        try {
-          const realDisks = await api.getDisks();
-          setDisks(realDisks);
-          
-          // Simulation d'un pool basé sur les disques utilisés
-          const usedDisks = realDisks.filter(d => d.status === 'In Pool');
-          if (usedDisks.length > 0) {
-            setPools([{
-              id: 'pool-root',
-              name: 'System_Storage',
-              raidLevel: 'Basic',
-              fileSystem: 'Btrfs',
-              status: 'Healthy',
-              capacityUsed: 450,
-              capacityTotal: usedDisks.reduce((acc, d) => acc + parseFloat(d.capacity) * 1024, 0),
-              diskIds: usedDisks.map(d => d.id)
-            }]);
-          }
-        } catch (e) {
-          console.error("Erreur chargement disques réels");
-        }
-      }
-    };
-    loadDisks();
-  }, [isLive]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPerfData(prev => {
-        const next = [...prev];
-        if (next.length > 200) next.shift();
-        const last = next[next.length - 1];
-        const time = new Date(last.timestamp + 5000);
-        const baseRead = 10 + Math.random() * 50;
-        const baseWrite = 5 + Math.random() * 30;
-        next.push({
-          timestamp: time.getTime(),
-          timeStr: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          read: Math.floor(baseRead),
-          write: Math.floor(baseWrite),
-          iops: Math.floor(baseRead * 2)
-        });
-        return next;
-      });
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const displayData = useMemo(() => downsampleData(perfData, 40), [perfData]);
-  const availableDisks = disks.filter(d => d.status === 'Available');
-
-  const handleScanHardware = async () => {
+  const fetchRealData = async () => {
+    if (!isLive) return;
     setIsScanning(true);
+    setError(null);
     try {
       const realDisks = await api.getDisks();
-      setDisks(realDisks);
-    } catch (e) {}
-    setTimeout(() => setIsScanning(false), 1500);
+      if (realDisks && realDisks.length > 0) {
+        setDisks(realDisks);
+        
+        const usedDisks = realDisks.filter(d => d.status === 'In Pool');
+        if (usedDisks.length > 0) {
+          setPools([{
+            id: 'pool-root',
+            name: 'System_Storage',
+            raidLevel: 'Basic',
+            fileSystem: 'Btrfs',
+            status: 'Healthy',
+            capacityUsed: 450,
+            capacityTotal: usedDisks.reduce((acc, d) => acc + (parseFloat(d.capacity) || 0) * 1024, 0),
+            diskIds: usedDisks.map(d => d.id)
+          }]);
+        }
+      } else {
+        setError("Le serveur est en ligne mais ne renvoie aucun disque. Essayez de lancer le backend avec 'sudo'.");
+      }
+    } catch (e) {
+      setError("Impossible de joindre le backend sur le port 3000.");
+      console.error(e);
+    } finally {
+      setIsScanning(false);
+    }
   };
 
-  const startInitialization = (disk: StorageDisk) => {
-    setConfiguringDisk(disk);
-    setInitStep('config');
-  };
+  useEffect(() => {
+    if (isLive) {
+      fetchRealData();
+    }
+  }, [isLive]);
 
   return (
     <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Alerte si le serveur n'est pas détecté */}
+      {!isLive && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-4 text-amber-500 text-sm">
+          <AlertTriangle size={20} />
+          <div>
+            <p className="font-bold uppercase tracking-tight">Mode Simulation Actif</p>
+            <p className="opacity-80">Les disques ci-dessous sont des exemples. Lancez <code>node server.js</code> sur votre serveur pour voir vos vrais disques.</p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-4 text-rose-500 text-sm">
+          <Info size={20} />
+          <p>{error}</p>
+        </div>
+      )}
+
       <section className="space-y-4">
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
@@ -159,7 +119,7 @@ const StorageManager: React.FC<StorageManagerProps> = ({ isLive }) => {
               </div>
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-500 font-medium">Capacité Totale Détectée</span>
+                  <span className="text-zinc-500 font-medium">Capacité Totale</span>
                   <span className="text-zinc-200 font-mono">{(pool.capacityTotal/1024).toFixed(1)} TB</span>
                 </div>
                 <div className="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden p-[1px]">
@@ -171,7 +131,7 @@ const StorageManager: React.FC<StorageManagerProps> = ({ isLive }) => {
           {pools.length === 0 && (
             <div className="col-span-full py-12 bg-zinc-900/50 border-2 border-dashed border-zinc-800 rounded-[2.5rem] flex flex-col items-center justify-center text-zinc-600">
                <Database size={32} className="mb-2 opacity-20" />
-               <p className="text-sm font-medium italic">Aucun pool détecté sur ce serveur.</p>
+               <p className="text-sm font-medium italic">Aucun pool actif détecté.</p>
             </div>
           )}
         </div>
@@ -185,46 +145,47 @@ const StorageManager: React.FC<StorageManagerProps> = ({ isLive }) => {
             </div>
             <div>
               <h3 className="text-lg font-bold text-zinc-100">Disques Physiques</h3>
-              <p className="text-xs text-zinc-500">Liste réelle des disques détectés via systeminformation.</p>
+              <p className="text-xs text-zinc-500">{isLive ? 'Vraie liste matérielle du serveur.' : 'Données d\'exemple (Mode Simulation).'}</p>
             </div>
           </div>
-          <button onClick={handleScanHardware} disabled={isScanning} className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border border-amber-500/20">
+          <button 
+            onClick={fetchRealData} 
+            disabled={isScanning || !isLive} 
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+              isLive ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/20' : 'bg-zinc-800 text-zinc-600 border-zinc-700 cursor-not-allowed'
+            }`}
+          >
             <RefreshCw size={14} className={isScanning ? 'animate-spin' : ''} />
-            {isScanning ? 'Balayage...' : 'Scanner les disques'}
+            {isScanning ? 'Synchronisation...' : 'Scanner les disques'}
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {disks.map(disk => (
-            <div key={disk.id} className={`p-6 bg-zinc-950 border-2 rounded-[2.5rem] transition-all flex flex-col group animate-in zoom-in-95 ${disk.status === 'In Pool' ? 'border-zinc-800' : 'border-dashed border-zinc-800 hover:border-amber-500/40'}`}>
+            <div key={disk.id} className={`p-6 bg-zinc-950 border-2 rounded-[2.5rem] transition-all flex flex-col group animate-in zoom-in-95 ${disk.status === 'In Pool' ? 'border-zinc-800 shadow-lg' : 'border-dashed border-zinc-800 hover:border-amber-500/40'}`}>
                 <div className="flex items-start justify-between mb-4">
                   <div className={`p-4 rounded-2xl border border-zinc-800 ${disk.status === 'In Pool' ? 'bg-indigo-500/5 text-indigo-400' : 'bg-zinc-900 text-zinc-400 group-hover:bg-amber-500/10 group-hover:text-amber-400'}`}>
                     <HardDrive size={28} />
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Dev: /dev/sd{String.fromCharCode(96 + disk.slot)}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Slot #{disk.slot}</span>
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded mt-1 ${disk.status === 'In Pool' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                      {disk.status === 'In Pool' ? 'UTILISÉ' : 'DISPONIBLE'}
+                      {disk.status === 'In Pool' ? 'UTILISÉ' : 'LIBRE'}
                     </span>
                   </div>
                 </div>
                 <h4 className="font-bold text-zinc-100 truncate mb-1">{disk.model}</h4>
                 <p className="text-[10px] font-mono text-zinc-500 uppercase">{disk.type} • {disk.capacity}</p>
-                <p className="text-[9px] text-zinc-600 mt-1 truncate">S/N: {disk.serialNumber}</p>
+                <p className="text-[9px] text-zinc-600 mt-2 truncate opacity-50">S/N: {disk.serialNumber}</p>
                 
                 {disk.status === 'Available' && (
                   <div className="mt-6">
-                    <button onClick={() => startInitialization(disk)} className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-2xl text-xs font-bold transition-all shadow-lg flex items-center justify-center gap-2">
+                    <button className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-2xl text-xs font-bold transition-all shadow-lg flex items-center justify-center gap-2">
                       <PlusCircle size={14} /> Provisionner
                     </button>
                   </div>
                 )}
             </div>
           ))}
-          {disks.length === 0 && !isScanning && (
-             <div className="col-span-full py-12 text-center text-zinc-600 italic">
-               Aucun disque détecté. Vérifiez que le backend tourne sur le port 3000.
-             </div>
-          )}
         </div>
       </section>
     </div>
