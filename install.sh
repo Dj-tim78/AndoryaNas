@@ -27,3 +27,5 @@ echo " - Vérifiez la configuration de Samba (/etc/samba/smb.conf)"
 echo " - Ajoutez vos partages NAS."
 echo " - Démarrez les services :"
 echo "     sudo systemctl restart smbd nmbd nfs-server"
+
+sudo npm install -g npm@11.7.0
