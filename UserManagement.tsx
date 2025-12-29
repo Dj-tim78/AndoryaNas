@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { User, Group } from '../types';
+import { User, Group } from './types';
 import { 
   UserPlus, Search, Shield, Key, Trash2, Eye, EyeOff, 
   Users, CheckCircle2, XCircle, Edit2, X, Save, AlertTriangle,
@@ -22,13 +22,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
   const [showPassword, setShowPassword] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Form States for New User
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'Admin' | 'User' | 'Guest'>('User');
   const [newUserGroups, setNewUserGroups] = useState<string[]>([]);
 
-  // Calculate member count dynamically
   const groupsWithCounts = useMemo(() => {
     return groups.map(group => ({
       ...group,
@@ -135,7 +133,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-      {/* Top Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-1 p-1 bg-zinc-950/80 rounded-2xl border border-zinc-800 shadow-xl backdrop-blur-md">
           <button 
@@ -333,7 +330,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
         )}
       </div>
 
-      {/* MODALS: ADD / EDIT USER */}
       {(showAddModal || editingUser) && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-zinc-950/90 backdrop-blur-xl animate-in fade-in duration-300">
           <div className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-[3rem] p-10 shadow-3xl relative animate-in zoom-in-95 duration-300">
@@ -444,9 +440,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, groups, onUpdate
                           </button>
                         );
                       })}
-                      {groups.length === 0 && (
-                        <p className="text-[10px] text-zinc-700 italic text-center py-4">Aucun groupe disponible.</p>
-                      )}
                     </div>
                   </div>
                 </div>

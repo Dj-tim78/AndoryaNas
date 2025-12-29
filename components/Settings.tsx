@@ -8,7 +8,7 @@ import {
   ListChecks, ExternalLink, Database, Monitor, Network,
   Lock, Shield, Hash, Download, ArrowRight, Laptop,
   Rocket, Lightbulb, Sparkles, Command, Github, AlertTriangle,
-  RefreshCw
+  RefreshCw, Layers, ShieldQuestion
 } from 'lucide-react';
 
 interface SettingsProps {
@@ -21,7 +21,7 @@ const SettingsView: React.FC<SettingsProps> = ({ serverName, onUpdateServerName 
   const [localServerInfo, setLocalServerInfo] = useState({
     name: serverName,
     ip: '192.168.1.45',
-    port: '8080',
+    port: '3000', // Port mis à jour à 3000 selon votre configuration
     os: 'Ubuntu 24.04 LTS',
   });
 
@@ -32,6 +32,14 @@ const SettingsView: React.FC<SettingsProps> = ({ serverName, onUpdateServerName 
   const githubUser = "Dj-tim78";
   const githubRepo = "AndoryaNas";
   const rawUrl = `https://raw.githubusercontent.com/${githubUser}/${githubRepo}/main`;
+
+  const dependencies = [
+    { name: 'Samba', pkg: 'samba', desc: 'Partage Windows/macOS (SMB)', icon: Network, color: 'text-blue-400' },
+    { name: 'NFS Server', pkg: 'nfs-kernel-server', desc: 'Partage Linux haute vitesse', icon: Database, color: 'text-orange-400' },
+    { name: 'Avahi', pkg: 'avahi-daemon', desc: 'Découverte réseau .local', icon: Globe, color: 'text-emerald-400' },
+    { name: 'Firewall', pkg: 'ufw', desc: 'Sécurité et filtrage ports', icon: ShieldCheck, color: 'text-rose-400' },
+    { name: 'Curl', pkg: 'curl', desc: 'Téléchargement des scripts', icon: Download, color: 'text-indigo-400' }
+  ];
 
   const getSteps = (os: string) => {
     if (os === 'windows') return [
@@ -48,7 +56,7 @@ const SettingsView: React.FC<SettingsProps> = ({ serverName, onUpdateServerName 
   };
 
   const readmeContent = useMemo(() => {
-    const port = localServerInfo.port || '8080';
+    const port = localServerInfo.port || '3000';
     
     if (distro === 'ubuntu') {
       return `# 🚀 INSTALLATION VIA GITHUB (RECOMMANDÉ)
@@ -98,7 +106,6 @@ net use Z: \\\\${localServerInfo.ip}\\Media /persistent:yes`;
     setIsTesting(true);
     setTestResult(null);
     setTimeout(() => {
-      // Simulation d'un test de ping vers GitHub
       setIsTesting(false);
       setTestResult('success');
     }, 1500);
@@ -145,7 +152,7 @@ net use Z: \\\\${localServerInfo.ip}\\Media /persistent:yes`;
                 <h3 className="text-2xl font-bold">Lancer l'installation</h3>
               </div>
               <p className="text-zinc-400 leading-relaxed">
-                Copiez cette ligne et collez-la dans votre terminal Ubuntu. Elle va chercher le script directement sur votre dépôt <span className="text-indigo-400 font-mono">Dj-tim78/AndoryaNas</span>.
+                Copiez cette ligne et collez-la dans votre terminal Ubuntu. Elle va chercher le script directement sur votre dépôt <span className="text-indigo-400 font-mono">{githubUser}/{githubRepo}</span>.
               </p>
               
               <div className="flex items-center gap-4 py-4">
@@ -202,8 +209,39 @@ net use Z: \\\\${localServerInfo.ip}\\Media /persistent:yes`;
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Detail Panel */}
+        <div className="lg:col-span-2 space-y-8">
+          
+          {/* Detailed Dependencies View */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 shadow-xl">
+             <div className="flex items-center gap-3 mb-8">
+                <div className="p-3 bg-zinc-800 rounded-2xl text-zinc-400">
+                  <Layers size={24} />
+                </div>
+                <div>
+                   <h3 className="text-xl font-bold">Dépendances Linux Requises</h3>
+                   <p className="text-xs text-zinc-500 uppercase font-black tracking-widest">Services essentiels du système</p>
+                </div>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {dependencies.map((dep, i) => (
+                 <div key={i} className="p-5 bg-zinc-950/50 border border-zinc-800/50 rounded-2xl group hover:border-zinc-700 transition-all">
+                    <div className="flex items-center gap-4">
+                       <div className={`p-3 rounded-xl bg-zinc-900 ${dep.color}`}>
+                          <dep.icon size={20} />
+                       </div>
+                       <div>
+                          <h4 className="font-bold text-zinc-200">{dep.name}</h4>
+                          <p className="text-[10px] font-mono text-zinc-500">{dep.pkg}</p>
+                       </div>
+                    </div>
+                    <p className="mt-3 text-xs text-zinc-500 leading-relaxed italic">{dep.desc}</p>
+                 </div>
+               ))}
+             </div>
+          </div>
+
+          {/* Code Detail Panel */}
           <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 shadow-xl">
             <div className="flex items-center justify-between mb-8">
                <div className="flex items-center gap-3">
@@ -212,7 +250,7 @@ net use Z: \\\\${localServerInfo.ip}\\Media /persistent:yes`;
                   </div>
                   <div>
                      <h3 className="text-xl font-bold">Script de déploiement</h3>
-                     <p className="text-xs text-zinc-500 uppercase font-black tracking-widest">Méthode GitHub Directe</p>
+                     <p className="text-xs text-zinc-500 uppercase font-black tracking-widest">Détails de l'installation</p>
                   </div>
                </div>
                <button onClick={copyReadme} className="text-xs font-bold text-indigo-400 hover:underline">Tout copier</button>
@@ -244,7 +282,7 @@ net use Z: \\\\${localServerInfo.ip}\\Media /persistent:yes`;
                </div>
                <div className="space-y-2">
                   <p className="font-bold text-zinc-200">4. Pare-feu local</p>
-                  <p className="text-zinc-500 text-xs leading-relaxed">Si l'interface ne s'affiche pas après : <code className="text-rose-400">sudo ufw allow 8080/tcp</code>.</p>
+                  <p className="text-zinc-500 text-xs leading-relaxed">Si l'interface ne s'affiche pas après : <code className="text-rose-400">sudo ufw allow 3000/tcp</code>.</p>
                </div>
             </div>
           </div>
@@ -272,6 +310,19 @@ net use Z: \\\\${localServerInfo.ip}\\Media /persistent:yes`;
                   </div>
                 ))}
              </div>
+          </div>
+
+          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-[2.5rem] p-8 shadow-xl">
+             <div className="flex items-center gap-3 mb-4">
+                <ShieldQuestion size={24} className="text-indigo-400" />
+                <h4 className="text-sm font-bold text-zinc-100">Besoin d'aide ?</h4>
+             </div>
+             <p className="text-xs text-zinc-400 leading-relaxed mb-6">
+               Si vous n'êtes pas sûr de votre configuration, demandez à l'assistant AI dans le menu latéral.
+             </p>
+             <button className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+               Consulter la Doc
+             </button>
           </div>
 
           <a 
