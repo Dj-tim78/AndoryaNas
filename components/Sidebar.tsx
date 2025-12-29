@@ -10,7 +10,8 @@ import {
   HardDrive,
   Users,
   LogOut,
-  Settings
+  Settings,
+  Github
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -77,13 +78,25 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout, 
           </div>
         </div>
         
-        <button 
-          onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all font-medium text-sm"
-        >
-          <LogOut size={18} />
-          <span>Logout Session</span>
-        </button>
+        <div className="space-y-1">
+          <a 
+            href="https://github.com/Dj-tim78/AndoryaNas" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-full flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-xl transition-all font-medium text-sm group"
+          >
+            <Github size={18} className="group-hover:text-indigo-400 transition-colors" />
+            <span>GitHub Repository</span>
+          </a>
+          
+          <button 
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all font-medium text-sm"
+          >
+            <LogOut size={18} />
+            <span>Logout Session</span>
+          </button>
+        </div>
       </div>
     </aside>
   );
